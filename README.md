@@ -18,7 +18,7 @@ APEX:https://www.apex.exchange
 
 
 
-![GMX](photo\GMX.png)
+![GMX](./photo/GMX.png)
 
 **2.DYDX交易机制：**
 
@@ -34,13 +34,13 @@ APEX:https://www.apex.exchange
 
 上述DEX支持链及品种对比如下：
 
-![venn1](photo\venn1.svg)
+![venn1](./photo/venn1.svg)
 
 
 
 
 
-![venn2 ](photo\venn2 .svg)
+![venn2 ](./photo/venn2.svg)
 
 # 二.Public API调用
 
@@ -169,7 +169,7 @@ const orderbook: OrderbookResponseObject = await client.public.getOrderbook(
 
 **python版本运行测试如下：**
 
-![get_data_dydx](photo\get_data_dydx.png)
+![get_data_dydx](./photo/get_data_dydx.png)
 
 
 
@@ -471,7 +471,7 @@ status code **200**
 
 **Python版本运行测试如下：**
 
-![get_data_apex](photo\get_data_apex.png)
+![get_data_apex](./photo/get_data_apex.png)
 
 
 
@@ -653,7 +653,7 @@ while True:
 
 ```
 
-运行结果如下：![get_currentdata_btc_apex](photo\get_currentdata_btc_apex.png)
+运行结果如下：![get_currentdata_btc_apex](./photo/get_currentdata_btc_apex.png)
 
 ![get_currendata_btc_apex_2](photo\get_currendata_btc_apex_2.png)
 
@@ -752,7 +752,7 @@ while True:
 
 结果如下：
 
-![get_currentdata_all_apex](photo\get_currentdata_all_apex.png)
+![get_currentdata_all_apex](./photo/get_currentdata_all_apex.png)
 
 可以看到，目前可以稳定收录所有数据，按照目前的交易频率，设置等待时间为10分钟比较合适
 
@@ -1307,13 +1307,13 @@ plt.show()
 
 BTC价差图如下图：
 
-![BTC_price_difference](photo\BTC_price_difference.png)
+![BTC_price_difference](./photo./BTC_price_difference.png)
 
 
 
 ETH价差图如下图：
 
-![ETH_price_difference](photo\ETH_price_difference.png)
+![ETH_price_difference](./photo/ETH_price_difference.png)
 
 
 
@@ -1375,9 +1375,9 @@ plt.show()
 
 生成的价差分布图如下：
 
-![ETH_Price Difference_2](photo\ETH_Price Difference_2.png)
+![ETH_Price Difference_2](./photo/ETH_Price Difference_2.png)
 
-![BTC_Price Difference_2](photo\BTC_Price Difference_2.png)
+![BTC_Price Difference_2](./photo/BTC_Price Difference_2.png)
 
 由于DYDX和APEX基于以太坊二层，gas费用较低，故而是有利可图的，具体gas得发交易测试一下。
 
@@ -1395,7 +1395,7 @@ deposit  8~15U （ >500U的存款免gas费，每周限免3次）
 
 交易费率（无gas费，只收手续费）：
 
-![dydx交易费率](photo\dydx交易费率.png)
+![dydx交易费率](./photo/dydx交易费率.png)
 
 
 
@@ -1470,7 +1470,7 @@ loop.close()
 
 运行结果如图：
 
-![price gap cal](photo\price gap cal.png)
+![price gap cal](./photo/price gap cal.png)
 
 
 
@@ -2615,17 +2615,17 @@ time 设置为currentTime+1000比较好，大约15分钟。
 
 大概10s达到杠杆上限
 
-![time](photo\time.png)
+![time](./photo/time.png)
 
 **仓位对比**：
 
 apex：
 
-![position_apex](photo\position_apex.png)
+![position_apex](./photo/position_apex.png)
 
 dydx：
 
-![position_dydx](photo\position_dydx.png)
+![position_dydx](./photo/position_dydx.png)
 
 
 
