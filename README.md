@@ -1307,7 +1307,7 @@ plt.show()
 
 BTC价差图如下图：
 
-![BTC_price_difference](./photo./BTC_price_difference.png)
+![BTC_price_difference](./photo/BTC_price_difference.png)
 
 
 
