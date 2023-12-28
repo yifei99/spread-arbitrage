@@ -17,7 +17,7 @@ from get_depth_data_bch import calculate_spread as calculate_spread_bch
 from get_depth_data_matic import calculate_spread as calculate_spread_matic
 from get_depth_data_sol import calculate_spread as calculate_spread_sol
 import time
-
+import json
 
 
 
@@ -37,37 +37,74 @@ client_dydx = init_dydx_client()
 account_response = client_dydx.private.get_account()
 position_id = account_response.data['account']['positionId']
 
-# 读取存储 arbitrage_count 的文件，如果存在则读取值
-try:
-    with open('arbitrage_count.txt', 'r') as file:
-        arbitrage_count = int(file.read())
-except FileNotFoundError:
-    arbitrage_count = 0
+#初始化变量
 
 dydx_take = 0.0005
 apex_make = 0.0005
 level = 4
 #币种有：btc,eth,link,ltc,avax,atom,doge,bch,matic,sol
-btc_count = 0
-eth_count = 0
-link_count = 0
-ltc_count = 0
-avax_count = 0
-atom_count = 0
-doge_count = 0
-bch_count = 0
-matic_count = 0
-sol_count = 0
-btc_trades = []
-eth_trades = []
-link_trades = []
-ltc_trades = []
-avax_trades = []
-atom_trades = []
-doge_trades = []
-bch_trades = []
-matic_trades = []
-sol_trades = []
+try:
+    # 尝试从文件中读取变量
+    with open('variables.json', 'r') as file:
+        variables = json.loads(file.read())
+
+    # 将读取的值赋给相应的变量
+    arbitrage_count = variables['arbitrage_count']
+    btc_count = variables['btc_count']
+    eth_count = variables['eth_count']
+    link_count = variables['link_count']
+    ltc_count = variables['ltc_count']
+    avax_count = variables['avax_count']
+    atom_count = variables['atom_count']
+    doge_count = variables['doge_count']
+    bch_count = variables['bch_count']
+    matic_count = variables['matic_count']
+    sol_count = variables['sol_count']
+
+except FileNotFoundError:
+    # 如果文件不存在，则初始化变量
+    arbitrage_count = 0
+    btc_count = 0
+    eth_count = 0
+    link_count = 0
+    ltc_count = 0
+    avax_count = 0
+    atom_count = 0
+    doge_count = 0
+    bch_count = 0
+    matic_count = 0
+    sol_count = 0
+
+try:
+    # 从文件中读取交易数据
+    with open('trade_data.json', 'r') as file:
+        trade_data = json.loads(file.read())
+
+    # 将数据赋给相应的数组
+    btc_trades = trade_data.get('btc_trades', [])
+    eth_trades = trade_data.get('eth_trades', [])
+    link_trades = trade_data.get('link_trades', [])
+    ltc_trades = trade_data.get('ltc_trades', [])
+    avax_trades = trade_data.get('avax_trades', [])
+    atom_trades = trade_data.get('atom_trades', [])
+    doge_trades = trade_data.get('doge_trades', [])
+    bch_trades = trade_data.get('bch_trades', [])
+    matic_trades = trade_data.get('matic_trades', [])
+    sol_trades = trade_data.get('sol_trades', [])
+
+except FileNotFoundError:
+    # 初始化交易数据数组，如果文件不存在
+    btc_trades = []
+    eth_trades = []
+    link_trades = []
+    ltc_trades = []
+    avax_trades = []
+    atom_trades = []
+    doge_trades = []
+    bch_trades = []
+    matic_trades = []
+    sol_trades = []
+
 
 
 #交易逻辑
@@ -260,12 +297,42 @@ async def arbitrage():
         sol_task = trade_sol()
         await asyncio.gather(btc_task,eth_task,link_task,ltc_task,avax_task,atom_task,doge_task,bch_task,matic_task,sol_task)
 
-        # 在适当的时候将 arbitrage_count 的值写入文件，以便下次读取
-        with open('arbitrage_count.txt', 'w') as file:
-            file.write(str(arbitrage_count))
-        # 等待 1 秒
-        await asyncio.sleep(1)
+       # 将所有变量组织成一个字典
+        variables = {
+            'btc_count': btc_count,
+            'eth_count': eth_count,
+            'link_count': link_count,
+            'ltc_count': ltc_count,
+            'avax_count': avax_count,
+            'atom_count': atom_count,
+            'doge_count': doge_count,
+            'bch_count': bch_count,
+            'matic_count': matic_count,
+            'sol_count': sol_count,
+            'arbitrage_count': arbitrage_count
+        }
 
+        # 将字典存储为JSON格式到文件
+        with open('variables.json', 'w') as file:
+            file.write(json.dumps(variables, indent=4))
+        
+        # 将所有交易数组组织成一个字典
+        trade_data = {
+            'btc_trades': btc_trades,
+            'eth_trades': eth_trades,
+            'link_trades': link_trades,
+            'ltc_trades': ltc_trades,
+            'avax_trades': avax_trades,
+            'atom_trades': atom_trades,
+            'doge_trades': doge_trades,
+            'bch_trades': bch_trades,
+            'matic_trades': matic_trades,
+            'sol_trades': sol_trades
+        }
+
+        # 将字典存储为JSON格式到文件
+        with open('trade_data.json', 'w') as file:
+            file.write(json.dumps(trade_data, indent=4))  # 使用indent参数使JSON文件更易读
 
 # 运行异步函数
 asyncio.run(arbitrage())

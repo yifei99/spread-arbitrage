@@ -31,8 +31,6 @@ def run_program(file_choice):
 
 if __name__ == "__main__":
     choice = input("请输入要运行的文件(1-btc,2-eth,3-link,4-ltc,5-avax,6-atom,7-doge,8-bch,9-matic,10-sol,11-all ):")
-    with open('arbitrage_count.txt', 'w') as file:
-            file.write(str(0))
     while True:
         program = run_program(choice)
         if program:
