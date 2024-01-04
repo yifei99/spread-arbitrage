@@ -26,7 +26,7 @@ async def get_apex_price():
     # 获取深度数据
     trades_data = apexclient.depth(symbol=symbol)['data']
     # 返回卖一价和买一价
-    return trades_data['a'][0][0], trades_data['b'][0][0], trades_data['a'][0][1], trades_data['b'][0][1], trades_data['a'][3][0], trades_data['b'][3][0]
+    return trades_data['a'][0][0], trades_data['b'][0][0], trades_data['a'][0][1], trades_data['b'][0][1], trades_data['a'][9][0], trades_data['b'][9][0]
 
 # 定义异步函数来获取 dydx 的价格
 async def get_dydx_price():
@@ -36,7 +36,7 @@ async def get_dydx_price():
     orderbook_response = dydxclient.public.get_orderbook(market=market)
     orderbook_data = orderbook_response.data
     # 返回卖一价和买一价
-    return orderbook_data['asks'][0]['price'], orderbook_data['bids'][0]['price'], orderbook_data['asks'][0]['size'], orderbook_data['bids'][0]['size'], orderbook_data['asks'][3]['price'], orderbook_data['bids'][3]['price']
+    return orderbook_data['asks'][0]['price'], orderbook_data['bids'][0]['price'], orderbook_data['asks'][0]['size'], orderbook_data['bids'][0]['size'], orderbook_data['asks'][9]['price'], orderbook_data['bids'][9]['price']
 
 # 定义异步函数来计算价差
 async def calculate_spread():
