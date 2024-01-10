@@ -35,6 +35,6 @@ if __name__ == "__main__":
         program = run_program(choice)
         if program:
             while program.poll() is None:
-                time.sleep(5)
+                time.sleep(1)
             print("程序已终止，重新启动中...")
             time.sleep(1)

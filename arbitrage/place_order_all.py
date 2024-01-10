@@ -38,10 +38,10 @@ account_response = client_dydx.private.get_account()
 position_id = account_response.data['account']['positionId']
 
 #初始化变量
-
+arbitrage_lock = asyncio.Lock()
 dydx_take = 0.0005
 apex_make = 0.0005
-level = 4
+level = 3
 #币种有：btc,eth,link,ltc,avax,atom,doge,bch,matic,sol
 try:
     # 尝试从文件中读取变量
@@ -114,61 +114,62 @@ async def execute_trade(client_apex, client_dydx, position_id, market,size,symbo
     global apex_make
     global level
     print('arbitrage_count:',arbitrage_count)
-    if float(b_first_price_apex)-float(s_first_price_dydx) > float(b_first_price_apex)*apex_make*2+float(s_first_price_dydx)*dydx_take*2:
-        fp = open('spread.txt','a')
-        print('count:',arbitrage_count,'symbol:',symbol,'as-db spread:',(float(b_first_price_apex)-float(s_first_price_dydx))/(float(b_first_price_apex)*apex_make+float(s_first_price_dydx)*dydx_take),file=fp)
-        fp.close()
-        if arbitrage_count<level:
-            currentTime = time.time()
-            limitFeeRate = client_apex.account['takerFeeRate']
-            task_apex_sell = asyncio.create_task(
-                send_order_apex(client_apex, symbol=symbol, side="SELL",
-                                type="LIMIT", size=size, expirationEpochSeconds=currentTime+1000,
-                                price=b_fourth_price_apex, limitFeeRate=limitFeeRate)
-            )
-            task_dydx_buy = asyncio.create_task(
-                send_order_dydx(client_dydx, position_id, market, ORDER_SIDE_BUY, ORDER_TYPE_LIMIT,
-                                False, size, s_fourth_price_dydx, '0.0015', currentTime+1000)
-            )
-            orderResult1 = await task_apex_sell
-            orderResult2 = await task_dydx_buy
-            margin_value = float(b_first_price_apex)-float(s_first_price_dydx)-float(b_first_price_apex)*apex_make-float(s_first_price_dydx)*dydx_take
-            globals()[coin_count] += 1
-            arbitrage_count += 1
-            coin_trades.append([margin_value,0])
-            fp = open('trades.txt','a')
-            print('open position:',file=fp)
-            print('apex order:',orderResult1,file=fp)
-            print('dydx order:',orderResult2,file=fp)
-            fp.close
-
-    if float(b_first_price_dydx)-float(s_first_price_apex) > float(b_first_price_dydx)*dydx_take*2+float(s_first_price_apex)*apex_make*2:
-        fp = open('spread.txt','a')
-        print('count:',arbitrage_count,'symbol:',symbol,'ab-ds spread:',(float(b_first_price_apex)-float(s_first_price_dydx))/(float(b_first_price_apex)*apex_make+float(s_first_price_dydx)*dydx_take),file=fp)
-        fp.close()
-        if arbitrage_count >-level:
-            currentTime = time.time()
-            limitFeeRate = client_apex.account['takerFeeRate']
-            task_apex_buy = asyncio.create_task(
-                send_order_apex(client_apex, symbol=symbol, side="BUY",
-                                type="LIMIT", size=size, expirationEpochSeconds=currentTime+1000,
-                                price=s_fourth_price_apex, limitFeeRate=limitFeeRate)
-            )
-            task_dydx_sell = asyncio.create_task(
-                send_order_dydx(client_dydx, position_id, market, ORDER_SIDE_SELL, ORDER_TYPE_LIMIT,
-                               False, size, b_first_price_dydx, '0.0015', currentTime+1000)
-            )
-            orderResult1 = await task_apex_buy
-            orderResult2 = await task_dydx_sell
-            margin_value = float(b_first_price_dydx)-float(s_first_price_apex)-float(b_first_price_dydx)*dydx_take-float(s_first_price_apex)*apex_make
-            globals()[coin_count] -= 1
-            arbitrage_count -= 1
-            coin_trades.append([margin_value,1])
-            fp = open('trades.txt','a')
-            print('open position:',file=fp)
-            print('apex order:',orderResult1,file=fp)
-            print('dydx order:',orderResult2,file=fp)
-            fp.close
+    async with arbitrage_lock:
+        if float(b_first_price_apex)-float(s_first_price_dydx) > float(b_first_price_apex)*apex_make*2+float(s_first_price_dydx)*dydx_take*2:
+            fp = open('spread.txt','a')
+            print('count:',arbitrage_count,'symbol:',symbol,'as-db spread:',(float(b_first_price_apex)-float(s_first_price_dydx))/(float(b_first_price_apex)*apex_make+float(s_first_price_dydx)*dydx_take),file=fp)
+            fp.close()
+            if arbitrage_count<level:
+                currentTime = time.time()
+                limitFeeRate = client_apex.account['takerFeeRate']
+                task_apex_sell = asyncio.create_task(
+                    send_order_apex(client_apex, symbol=symbol, side="SELL",
+                                    type="LIMIT", size=size, expirationEpochSeconds=currentTime+1000,
+                                    price=b_fourth_price_apex, limitFeeRate=limitFeeRate)
+                )
+                task_dydx_buy = asyncio.create_task(
+                    send_order_dydx(client_dydx, position_id, market, ORDER_SIDE_BUY, ORDER_TYPE_LIMIT,
+                                    False, size, s_fourth_price_dydx, '0.0015', currentTime+1000)
+                )
+                orderResult1 = await task_apex_sell
+                orderResult2 = await task_dydx_buy
+                margin_value = float(b_first_price_apex)-float(s_first_price_dydx)-float(b_first_price_apex)*apex_make-float(s_first_price_dydx)*dydx_take
+                globals()[coin_count] += 1
+                arbitrage_count += 1
+                coin_trades.append([margin_value,0])
+                fp = open('trades.txt','a')
+                print('open position:',file=fp)
+                print('apex order:',orderResult1,file=fp)
+                print('dydx order:',orderResult2,file=fp)
+                fp.close
+    async with arbitrage_lock:
+        if float(b_first_price_dydx)-float(s_first_price_apex) > float(b_first_price_dydx)*dydx_take*2+float(s_first_price_apex)*apex_make*2:
+            fp = open('spread.txt','a')
+            print('count:',arbitrage_count,'symbol:',symbol,'ab-ds spread:',(float(b_first_price_apex)-float(s_first_price_dydx))/(float(b_first_price_apex)*apex_make+float(s_first_price_dydx)*dydx_take),file=fp)
+            fp.close()
+            if arbitrage_count >-level:
+                currentTime = time.time()
+                limitFeeRate = client_apex.account['takerFeeRate']
+                task_apex_buy = asyncio.create_task(
+                    send_order_apex(client_apex, symbol=symbol, side="BUY",
+                                    type="LIMIT", size=size, expirationEpochSeconds=currentTime+1000,
+                                    price=s_fourth_price_apex, limitFeeRate=limitFeeRate)
+                )
+                task_dydx_sell = asyncio.create_task(
+                    send_order_dydx(client_dydx, position_id, market, ORDER_SIDE_SELL, ORDER_TYPE_LIMIT,
+                                False, size, b_first_price_dydx, '0.0015', currentTime+1000)
+                )
+                orderResult1 = await task_apex_buy
+                orderResult2 = await task_dydx_sell
+                margin_value = float(b_first_price_dydx)-float(s_first_price_apex)-float(b_first_price_dydx)*dydx_take-float(s_first_price_apex)*apex_make
+                globals()[coin_count] -= 1
+                arbitrage_count -= 1
+                coin_trades.append([margin_value,1])
+                fp = open('trades.txt','a')
+                print('open position:',file=fp)
+                print('apex order:',orderResult1,file=fp)
+                print('dydx order:',orderResult2,file=fp)
+                fp.close
 
 async def close_position(client_apex, client_dydx, position_id, market,size, symbol,s_first_price_apex,b_first_price_apex,s_first_price_dydx,b_first_price_dydx,s_fourth_price_apex,b_fourth_price_apex,s_fourth_price_dydx,b_fourth_price_dydx,coin_count,coin_trades):
         global dydx_take
@@ -225,57 +226,57 @@ async def close_position(client_apex, client_dydx, position_id, market,size, sym
 
 async def trade_btc():
     s_first_pirce_apex_btc, b_first_price_apex_btc, s_first_price_dydx_btc, b_first_price_dydx_btc, _, _, _, _,s_fourth_price_apex_btc,b_fourth_price_apex_btc,s_fourth_price_dydx_btc,b_fourth_price_dydx_btc = await calculate_spread_btc()
-    await execute_trade(client_apex, client_dydx, position_id, MARKET_BTC_USD, '0.001',  'BTC-USDC',s_first_pirce_apex_btc,b_first_price_apex_btc,s_first_price_dydx_btc,b_first_price_dydx_btc,s_fourth_price_apex_btc,b_fourth_price_apex_btc,s_fourth_price_dydx_btc,b_fourth_price_dydx_btc,'btc_count',btc_trades)
+    await execute_trade(client_apex, client_dydx, position_id, MARKET_BTC_USD, '0.002',  'BTC-USDC',s_first_pirce_apex_btc,b_first_price_apex_btc,s_first_price_dydx_btc,b_first_price_dydx_btc,s_fourth_price_apex_btc,b_fourth_price_apex_btc,s_fourth_price_dydx_btc,b_fourth_price_dydx_btc,'btc_count',btc_trades)
     s_first_pirce_apex_btc, b_first_price_apex_btc, s_first_price_dydx_btc, b_first_price_dydx_btc, _, _, _, _,s_fourth_price_apex_btc,b_fourth_price_apex_btc,s_fourth_price_dydx_btc,b_fourth_price_dydx_btc = await calculate_spread_btc()
-    await close_position(client_apex, client_dydx, position_id, MARKET_BTC_USD, '0.001','BTC-USDC',s_first_pirce_apex_btc,b_first_price_apex_btc,s_first_price_dydx_btc,b_first_price_dydx_btc,s_fourth_price_apex_btc,b_fourth_price_apex_btc,s_fourth_price_dydx_btc,b_fourth_price_dydx_btc,'btc_count',btc_trades)
+    await close_position(client_apex, client_dydx, position_id, MARKET_BTC_USD, '0.002','BTC-USDC',s_first_pirce_apex_btc,b_first_price_apex_btc,s_first_price_dydx_btc,b_first_price_dydx_btc,s_fourth_price_apex_btc,b_fourth_price_apex_btc,s_fourth_price_dydx_btc,b_fourth_price_dydx_btc,'btc_count',btc_trades)
 
 async def trade_eth():
     s_first_pirce_apex_eth, b_first_price_apex_eth, s_first_price_dydx_eth, b_first_price_dydx_eth, _, _, _, _,s_fourth_price_apex_eth,b_fourth_price_apex_eth,s_fourth_price_dydx_eth,b_fourth_price_dydx_eth = await calculate_spread_eth()
-    await execute_trade(client_apex, client_dydx, position_id, MARKET_ETH_USD, '0.01',  'ETH-USDC',s_first_pirce_apex_eth,b_first_price_apex_eth,s_first_price_dydx_eth,b_first_price_dydx_eth,s_fourth_price_apex_eth,b_fourth_price_apex_eth,s_fourth_price_dydx_eth,b_fourth_price_dydx_eth,'eth_count',eth_trades)
+    await execute_trade(client_apex, client_dydx, position_id, MARKET_ETH_USD, '0.04',  'ETH-USDC',s_first_pirce_apex_eth,b_first_price_apex_eth,s_first_price_dydx_eth,b_first_price_dydx_eth,s_fourth_price_apex_eth,b_fourth_price_apex_eth,s_fourth_price_dydx_eth,b_fourth_price_dydx_eth,'eth_count',eth_trades)
     s_first_pirce_apex_eth, b_first_price_apex_eth, s_first_price_dydx_eth, b_first_price_dydx_eth, _, _, _, _,s_fourth_price_apex_eth,b_fourth_price_apex_eth,s_fourth_price_dydx_eth,b_fourth_price_dydx_eth = await calculate_spread_eth()
-    await close_position(client_apex, client_dydx, position_id, MARKET_ETH_USD, '0.01','ETH-USDC',s_first_pirce_apex_eth,b_first_price_apex_eth,s_first_price_dydx_eth,b_first_price_dydx_eth,s_fourth_price_apex_eth,b_fourth_price_apex_eth,s_fourth_price_dydx_eth,b_fourth_price_dydx_eth,'eth_count',eth_trades)
+    await close_position(client_apex, client_dydx, position_id, MARKET_ETH_USD, '0.04','ETH-USDC',s_first_pirce_apex_eth,b_first_price_apex_eth,s_first_price_dydx_eth,b_first_price_dydx_eth,s_fourth_price_apex_eth,b_fourth_price_apex_eth,s_fourth_price_dydx_eth,b_fourth_price_dydx_eth,'eth_count',eth_trades)
 
 async def trade_link():
     s_first_pirce_apex_link, b_first_price_apex_link, s_first_price_dydx_link, b_first_price_dydx_link, _, _, _, _,s_fourth_price_apex_link,b_fourth_price_apex_link,s_fourth_price_dydx_link,b_fourth_price_dydx_link = await calculate_spread_link()
-    await execute_trade(client_apex, client_dydx, position_id, MARKET_LINK_USD, '1',  'LINK-USDC',s_first_pirce_apex_link,b_first_price_apex_link,s_first_price_dydx_link,b_first_price_dydx_link,s_fourth_price_apex_link,b_fourth_price_apex_link,s_fourth_price_dydx_link,b_fourth_price_dydx_link,'link_count',link_trades)
+    await execute_trade(client_apex, client_dydx, position_id, MARKET_LINK_USD, '7',  'LINK-USDC',s_first_pirce_apex_link,b_first_price_apex_link,s_first_price_dydx_link,b_first_price_dydx_link,s_fourth_price_apex_link,b_fourth_price_apex_link,s_fourth_price_dydx_link,b_fourth_price_dydx_link,'link_count',link_trades)
     s_first_pirce_apex_link, b_first_price_apex_link, s_first_price_dydx_link, b_first_price_dydx_link, _, _, _, _,s_fourth_price_apex_link,b_fourth_price_apex_link,s_fourth_price_dydx_link,b_fourth_price_dydx_link = await calculate_spread_link()
-    await close_position(client_apex, client_dydx, position_id, MARKET_LINK_USD, '1','LINK-USDC',s_first_pirce_apex_link,b_first_price_apex_link,s_first_price_dydx_link,b_first_price_dydx_link,s_fourth_price_apex_link,b_fourth_price_apex_link,s_fourth_price_dydx_link,b_fourth_price_dydx_link,'link_count',link_trades)
+    await close_position(client_apex, client_dydx, position_id, MARKET_LINK_USD, '7','LINK-USDC',s_first_pirce_apex_link,b_first_price_apex_link,s_first_price_dydx_link,b_first_price_dydx_link,s_fourth_price_apex_link,b_fourth_price_apex_link,s_fourth_price_dydx_link,b_fourth_price_dydx_link,'link_count',link_trades)
 
 async def trade_ltc():
     s_first_pirce_apex_ltc, b_first_price_apex_ltc, s_first_price_dydx_ltc, b_first_price_dydx_ltc, _, _, _, _,s_fourth_price_apex_ltc,b_fourth_price_apex_ltc,s_fourth_price_dydx_ltc,b_fourth_price_dydx_ltc = await calculate_spread_ltc()
-    await execute_trade(client_apex, client_dydx, position_id, MARKET_LTC_USD, '0.5',  'LTC-USDC',s_first_pirce_apex_ltc,b_first_price_apex_ltc,s_first_price_dydx_ltc,b_first_price_dydx_ltc,s_fourth_price_apex_ltc,b_fourth_price_apex_ltc,s_fourth_price_dydx_ltc,b_fourth_price_dydx_ltc,'ltc_count',ltc_trades)
+    await execute_trade(client_apex, client_dydx, position_id, MARKET_LTC_USD, '1.5',  'LTC-USDC',s_first_pirce_apex_ltc,b_first_price_apex_ltc,s_first_price_dydx_ltc,b_first_price_dydx_ltc,s_fourth_price_apex_ltc,b_fourth_price_apex_ltc,s_fourth_price_dydx_ltc,b_fourth_price_dydx_ltc,'ltc_count',ltc_trades)
     s_first_pirce_apex_ltc, b_first_price_apex_ltc, s_first_price_dydx_ltc, b_first_price_dydx_ltc, _, _, _, _,s_fourth_price_apex_ltc,b_fourth_price_apex_ltc,s_fourth_price_dydx_ltc,b_fourth_price_dydx_ltc = await calculate_spread_ltc()
-    await close_position(client_apex, client_dydx, position_id, MARKET_LTC_USD, '0.5','LTC-USDC',s_first_pirce_apex_ltc,b_first_price_apex_ltc,s_first_price_dydx_ltc,b_first_price_dydx_ltc,s_fourth_price_apex_ltc,b_fourth_price_apex_ltc,s_fourth_price_dydx_ltc,b_fourth_price_dydx_ltc,'ltc_count',ltc_trades)
+    await close_position(client_apex, client_dydx, position_id, MARKET_LTC_USD, '1.5','LTC-USDC',s_first_pirce_apex_ltc,b_first_price_apex_ltc,s_first_price_dydx_ltc,b_first_price_dydx_ltc,s_fourth_price_apex_ltc,b_fourth_price_apex_ltc,s_fourth_price_dydx_ltc,b_fourth_price_dydx_ltc,'ltc_count',ltc_trades)
 
 async def trade_avax():
     s_first_pirce_apex_avax, b_first_price_apex_avax, s_first_price_dydx_avax, b_first_price_dydx_avax, _, _, _, _,s_fourth_price_apex_avax,b_fourth_price_apex_avax,s_fourth_price_dydx_avax,b_fourth_price_dydx_avax = await calculate_spread_avax()
-    await execute_trade(client_apex, client_dydx, position_id, MARKET_AVAX_USD, '1',  'AVAX-USDC',s_first_pirce_apex_avax,b_first_price_apex_avax,s_first_price_dydx_avax,b_first_price_dydx_avax,s_fourth_price_apex_avax,b_fourth_price_apex_avax,s_fourth_price_dydx_avax,b_fourth_price_dydx_avax,'avax_count',avax_trades)
+    await execute_trade(client_apex, client_dydx, position_id, MARKET_AVAX_USD, '3',  'AVAX-USDC',s_first_pirce_apex_avax,b_first_price_apex_avax,s_first_price_dydx_avax,b_first_price_dydx_avax,s_fourth_price_apex_avax,b_fourth_price_apex_avax,s_fourth_price_dydx_avax,b_fourth_price_dydx_avax,'avax_count',avax_trades)
     s_first_pirce_apex_avax, b_first_price_apex_avax, s_first_price_dydx_avax, b_first_price_dydx_avax, _, _, _, _,s_fourth_price_apex_avax,b_fourth_price_apex_avax,s_fourth_price_dydx_avax,b_fourth_price_dydx_avax = await calculate_spread_avax()
-    await close_position(client_apex, client_dydx, position_id, MARKET_AVAX_USD, '1','AVAX-USDC',s_first_pirce_apex_avax,b_first_price_apex_avax,s_first_price_dydx_avax,b_first_price_dydx_avax,s_fourth_price_apex_avax,b_fourth_price_apex_avax,s_fourth_price_dydx_avax,b_fourth_price_dydx_avax,'avax_count',avax_trades)
+    await close_position(client_apex, client_dydx, position_id, MARKET_AVAX_USD, '3','AVAX-USDC',s_first_pirce_apex_avax,b_first_price_apex_avax,s_first_price_dydx_avax,b_first_price_dydx_avax,s_fourth_price_apex_avax,b_fourth_price_apex_avax,s_fourth_price_dydx_avax,b_fourth_price_dydx_avax,'avax_count',avax_trades)
 
 async def trade_atom():
     s_first_pirce_apex_atom, b_first_price_apex_atom, s_first_price_dydx_atom, b_first_price_dydx_atom, _, _, _, _,s_fourth_price_apex_atom,b_fourth_price_apex_atom,s_fourth_price_dydx_atom,b_fourth_price_dydx_atom = await calculate_spread_atom()
-    await execute_trade(client_apex, client_dydx, position_id, MARKET_ATOM_USD, '1',  'ATOM-USDC',s_first_pirce_apex_atom,b_first_price_apex_atom,s_first_price_dydx_atom,b_first_price_dydx_atom,s_fourth_price_apex_atom,b_fourth_price_apex_atom,s_fourth_price_dydx_atom,b_fourth_price_dydx_atom,'atom_count',atom_trades)
+    await execute_trade(client_apex, client_dydx, position_id, MARKET_ATOM_USD, '10',  'ATOM-USDC',s_first_pirce_apex_atom,b_first_price_apex_atom,s_first_price_dydx_atom,b_first_price_dydx_atom,s_fourth_price_apex_atom,b_fourth_price_apex_atom,s_fourth_price_dydx_atom,b_fourth_price_dydx_atom,'atom_count',atom_trades)
     s_first_pirce_apex_atom, b_first_price_apex_atom, s_first_price_dydx_atom, b_first_price_dydx_atom, _, _, _, _,s_fourth_price_apex_atom,b_fourth_price_apex_atom,s_fourth_price_dydx_atom,b_fourth_price_dydx_atom = await calculate_spread_atom()
-    await close_position(client_apex, client_dydx, position_id, MARKET_ATOM_USD, '1','ATOM-USDC',s_first_pirce_apex_atom,b_first_price_apex_atom,s_first_price_dydx_atom,b_first_price_dydx_atom,s_fourth_price_apex_atom,b_fourth_price_apex_atom,s_fourth_price_dydx_atom,b_fourth_price_dydx_atom,'atom_count',atom_trades)
+    await close_position(client_apex, client_dydx, position_id, MARKET_ATOM_USD, '10','ATOM-USDC',s_first_pirce_apex_atom,b_first_price_apex_atom,s_first_price_dydx_atom,b_first_price_dydx_atom,s_fourth_price_apex_atom,b_fourth_price_apex_atom,s_fourth_price_dydx_atom,b_fourth_price_dydx_atom,'atom_count',atom_trades)
 
 async def trade_doge():
     s_first_pirce_apex_doge, b_first_price_apex_doge, s_first_price_dydx_doge, b_first_price_dydx_doge, _, _, _, _,s_fourth_price_apex_doge,b_fourth_price_apex_doge,s_fourth_price_dydx_doge,b_fourth_price_dydx_doge = await calculate_spread_doge()
-    await execute_trade(client_apex, client_dydx, position_id, MARKET_DOGE_USD, '300',  'DOGE-USDC',s_first_pirce_apex_doge,b_first_price_apex_doge,s_first_price_dydx_doge,b_first_price_dydx_doge,s_fourth_price_apex_doge,b_fourth_price_apex_doge,s_fourth_price_dydx_doge,b_fourth_price_dydx_doge,'doge_count',doge_trades)
+    await execute_trade(client_apex, client_dydx, position_id, MARKET_DOGE_USD, '1000',  'DOGE-USDC',s_first_pirce_apex_doge,b_first_price_apex_doge,s_first_price_dydx_doge,b_first_price_dydx_doge,s_fourth_price_apex_doge,b_fourth_price_apex_doge,s_fourth_price_dydx_doge,b_fourth_price_dydx_doge,'doge_count',doge_trades)
     s_first_pirce_apex_doge, b_first_price_apex_doge, s_first_price_dydx_doge, b_first_price_dydx_doge, _, _, _, _,s_fourth_price_apex_doge,b_fourth_price_apex_doge,s_fourth_price_dydx_doge,b_fourth_price_dydx_doge = await calculate_spread_doge()
-    await close_position(client_apex, client_dydx, position_id, MARKET_DOGE_USD, '300','DOGE-USDC',s_first_pirce_apex_doge,b_first_price_apex_doge,s_first_price_dydx_doge,b_first_price_dydx_doge,s_fourth_price_apex_doge,b_fourth_price_apex_doge,s_fourth_price_dydx_doge,b_fourth_price_dydx_doge,'doge_count',doge_trades)
+    await close_position(client_apex, client_dydx, position_id, MARKET_DOGE_USD, '1000','DOGE-USDC',s_first_pirce_apex_doge,b_first_price_apex_doge,s_first_price_dydx_doge,b_first_price_dydx_doge,s_fourth_price_apex_doge,b_fourth_price_apex_doge,s_fourth_price_dydx_doge,b_fourth_price_dydx_doge,'doge_count',doge_trades)
 
 async def trade_bch():
     s_first_pirce_apex_bch, b_first_price_apex_bch, s_first_price_dydx_bch, b_first_price_dydx_bch, _, _, _, _,s_fourth_price_apex_bch,b_fourth_price_apex_bch,s_fourth_price_dydx_bch,b_fourth_price_dydx_bch = await calculate_spread_bch()
-    await execute_trade(client_apex, client_dydx, position_id, MARKET_BCH_USD, '0.2',  'BCH-USDC',s_first_pirce_apex_bch,b_first_price_apex_bch,s_first_price_dydx_bch,b_first_price_dydx_bch,s_fourth_price_apex_bch,b_fourth_price_apex_bch,s_fourth_price_dydx_bch,b_fourth_price_dydx_bch,'bch_count',bch_trades)
+    await execute_trade(client_apex, client_dydx, position_id, MARKET_BCH_USD, '0.4',  'BCH-USDC',s_first_pirce_apex_bch,b_first_price_apex_bch,s_first_price_dydx_bch,b_first_price_dydx_bch,s_fourth_price_apex_bch,b_fourth_price_apex_bch,s_fourth_price_dydx_bch,b_fourth_price_dydx_bch,'bch_count',bch_trades)
     s_first_pirce_apex_bch, b_first_price_apex_bch, s_first_price_dydx_bch, b_first_price_dydx_bch, _, _, _, _,s_fourth_price_apex_bch,b_fourth_price_apex_bch,s_fourth_price_dydx_bch,b_fourth_price_dydx_bch = await calculate_spread_bch()
-    await close_position(client_apex, client_dydx, position_id, MARKET_BCH_USD, '0.2','BCH-USDC',s_first_pirce_apex_bch,b_first_price_apex_bch,s_first_price_dydx_bch,b_first_price_dydx_bch,s_fourth_price_apex_bch,b_fourth_price_apex_bch,s_fourth_price_dydx_bch,b_fourth_price_dydx_bch,'bch_count',bch_trades)
+    await close_position(client_apex, client_dydx, position_id, MARKET_BCH_USD, '0.4','BCH-USDC',s_first_pirce_apex_bch,b_first_price_apex_bch,s_first_price_dydx_bch,b_first_price_dydx_bch,s_fourth_price_apex_bch,b_fourth_price_apex_bch,s_fourth_price_dydx_bch,b_fourth_price_dydx_bch,'bch_count',bch_trades)
 
 async def trade_matic():
     s_first_pirce_apex_matic, b_first_price_apex_matic, s_first_price_dydx_matic, b_first_price_dydx_matic, _, _, _, _,s_fourth_price_apex_matic,b_fourth_price_apex_matic,s_fourth_price_dydx_matic,b_fourth_price_dydx_matic = await calculate_spread_matic()
-    await execute_trade(client_apex, client_dydx, position_id, MARKET_MATIC_USD, '30',  'MATIC-USDC',s_first_pirce_apex_matic,b_first_price_apex_matic,s_first_price_dydx_matic,b_first_price_dydx_matic,s_fourth_price_apex_matic,b_fourth_price_apex_matic,s_fourth_price_dydx_matic,b_fourth_price_dydx_matic,'matic_count',matic_trades)
+    await execute_trade(client_apex, client_dydx, position_id, MARKET_MATIC_USD, '120',  'MATIC-USDC',s_first_pirce_apex_matic,b_first_price_apex_matic,s_first_price_dydx_matic,b_first_price_dydx_matic,s_fourth_price_apex_matic,b_fourth_price_apex_matic,s_fourth_price_dydx_matic,b_fourth_price_dydx_matic,'matic_count',matic_trades)
     s_first_pirce_apex_matic, b_first_price_apex_matic, s_first_price_dydx_matic, b_first_price_dydx_matic, _, _, _, _,s_fourth_price_apex_matic,b_fourth_price_apex_matic,s_fourth_price_dydx_matic,b_fourth_price_dydx_matic = await calculate_spread_matic()
-    await close_position(client_apex, client_dydx, position_id, MARKET_MATIC_USD, '30','MATIC-USDC',s_first_pirce_apex_matic,b_first_price_apex_matic,s_first_price_dydx_matic,b_first_price_dydx_matic,s_fourth_price_apex_matic,b_fourth_price_apex_matic,s_fourth_price_dydx_matic,b_fourth_price_dydx_matic,'matic_count',matic_trades)
+    await close_position(client_apex, client_dydx, position_id, MARKET_MATIC_USD, '120','MATIC-USDC',s_first_pirce_apex_matic,b_first_price_apex_matic,s_first_price_dydx_matic,b_first_price_dydx_matic,s_fourth_price_apex_matic,b_fourth_price_apex_matic,s_fourth_price_dydx_matic,b_fourth_price_dydx_matic,'matic_count',matic_trades)
 
 async def trade_sol():
     s_first_pirce_apex_sol, b_first_price_apex_sol, s_first_price_dydx_sol, b_first_price_dydx_sol, _, _, _, _,s_fourth_price_apex_sol,b_fourth_price_apex_sol,s_fourth_price_dydx_sol,b_fourth_price_dydx_sol = await calculate_spread_sol()
@@ -287,7 +288,7 @@ async def arbitrage():
     while True:
         btc_task = trade_btc()
         eth_task = trade_eth()
-        link_task = trade_link()
+        link_task = trade_link()    
         ltc_task = trade_ltc()
         avax_task = trade_avax()
         atom_task = trade_atom()
