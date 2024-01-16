@@ -18,8 +18,8 @@ async def main():
     currentTime = time.time()
     limitFeeRate = client_apex.account['takerFeeRate']
     orderResult = await send_order_apex(client_apex, symbol="ATOM-USDC", side="BUY",
-                                            type="LIMIT", size="0.5", expirationEpochSeconds= currentTime+100,
-                                            price=s_fourth_price_apex, limitFeeRate=limitFeeRate)
+                                            type="LIMIT", size="0.5", expirationEpochSeconds= currentTime+1000,
+                                            price='1', limitFeeRate=limitFeeRate)
     print(orderResult)
     print(s_first_price_apex,s_fourth_price_apex)
 

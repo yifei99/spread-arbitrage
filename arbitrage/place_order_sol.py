@@ -28,52 +28,49 @@ position_id = account_response.data['account']['positionId']
 async def arbitrage():
   arbitrage_count = 0
   apex_make = 0.0005
-  dydx_take = 0.0002
+  dydx_take = 0.0005
+  level = 4
   while True:
     # 计算价差
-    s_first_price_apex, b_first_price_apex, s_first_price_dydx, b_first_price_dydx, _, _, _, _ = await calculate_spread()
+    s_first_pirce_apex_sol, b_first_price_apex_sol, s_first_price_dydx_sol, b_first_price_dydx_sol, _, _, _, _,s_fourth_price_apex_sol,b_fourth_price_apex_sol,s_fourth_price_dydx_sol,b_fourth_price_dydx_sol = await calculate_spread()
     # 根据价差判断是否发送交易
-    if float(b_first_price_apex)-float(s_first_price_dydx) > float(b_first_price_apex)*apex_make+float(s_first_price_dydx)*dydx_take:
-          if arbitrage_count <8:
+    if float(b_first_price_apex_sol)-float(s_first_price_dydx_sol) > float(b_first_price_apex_sol)*apex_make+float(s_first_price_dydx_sol)*dydx_take:
+          if arbitrage_count <level:
             currentTime = time.time()
             limitFeeRate = client_apex.account['takerFeeRate']
             task_apex_sell = asyncio.create_task(
                 send_order_apex(client_apex, symbol="SOL-USDC", side="SELL",
                                 type="MARKET", size="1", expirationEpochSeconds=currentTime+1000,
-                                price=48, limitFeeRate=limitFeeRate)
+                                price=b_first_price_apex_sol, limitFeeRate=limitFeeRate)
             )
             task_dydx_buy = asyncio.create_task(
                 send_order_dydx(client_dydx, position_id, MARKET_SOL_USD, ORDER_SIDE_BUY, ORDER_TYPE_LIMIT,
-                                False, '1', s_first_price_dydx, '0.0015', currentTime+1000)
+                                False, '1', s_first_price_dydx_sol, '0.0015', currentTime+1000000)
             )
 
             orderResult1 = await task_apex_sell
             orderResult2 = await task_dydx_buy
             arbitrage_count += 1
-            if arbitrage_count >=8:
-               print('above leverage ,stop')
-            print(orderResult1,orderResult2)
-    if float(b_first_price_dydx)-float(s_first_price_apex) > float(b_first_price_dydx)*dydx_take+float(s_first_price_apex)*apex_make:
-      if arbitrage_count >-8:
+
+    if float(b_first_price_dydx_sol)-float(s_first_pirce_apex_sol) > float(b_first_price_dydx_sol)*dydx_take+float(s_first_pirce_apex_sol)*apex_make:
+      if arbitrage_count >-level:
         currentTime = time.time()
         # 异步地发送一个apex市价买单和一个dydx市价卖单
         limitFeeRate = client_apex.account['takerFeeRate']
         task_apex_buy = asyncio.create_task(
                 send_order_apex(client_apex, symbol="SOL-USDC", side="BUY",
                                 type="MARKET", size="1", expirationEpochSeconds=currentTime+1000,
-                                price=188, limitFeeRate=limitFeeRate)
+                                price=s_first_pirce_apex_sol, limitFeeRate=limitFeeRate)
             )
         task_dydx_sell = asyncio.create_task(
             send_order_dydx(client_dydx, position_id, MARKET_SOL_USD, ORDER_SIDE_SELL, ORDER_TYPE_LIMIT,
-                            False, '1', b_first_price_dydx, '0.0015', currentTime+1000)
+                            False, '1', b_first_price_dydx_sol, '0.0015', currentTime+1000000)
         )
 
         orderResult1 = await task_apex_buy
         orderResult2 = await task_dydx_sell
         arbitrage_count -= 1
-        if arbitrage_count <=-8:
-          print('above leverage ,stop')
-        print(orderResult1,orderResult2)
+
     # 延时一秒，避免过于频繁
     await asyncio.sleep(1)
 

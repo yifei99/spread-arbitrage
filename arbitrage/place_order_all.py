@@ -129,7 +129,7 @@ async def execute_trade(client_apex, client_dydx, position_id, market,size,symbo
                 )
                 task_dydx_buy = asyncio.create_task(
                     send_order_dydx(client_dydx, position_id, market, ORDER_SIDE_BUY, ORDER_TYPE_LIMIT,
-                                    False, size, s_fourth_price_dydx, '0.0015', currentTime+1000)
+                                    False, size, s_fourth_price_dydx, '0.0015', currentTime+1000000)
                 )
                 orderResult1 = await task_apex_sell
                 orderResult2 = await task_dydx_buy
@@ -157,7 +157,7 @@ async def execute_trade(client_apex, client_dydx, position_id, market,size,symbo
                 )
                 task_dydx_sell = asyncio.create_task(
                     send_order_dydx(client_dydx, position_id, market, ORDER_SIDE_SELL, ORDER_TYPE_LIMIT,
-                                False, size, b_first_price_dydx, '0.0015', currentTime+1000)
+                                False, size, b_first_price_dydx, '0.0015', currentTime+1000000)
                 )
                 orderResult1 = await task_apex_buy
                 orderResult2 = await task_dydx_sell
@@ -177,7 +177,7 @@ async def close_position(client_apex, client_dydx, position_id, market,size, sym
         global arbitrage_count
         if(globals()[coin_count]!=0):
             if(coin_trades[-1][1]==0):
-                if (float(b_first_price_dydx)-float(s_first_price_apex) + coin_trades[-1][0])> (float(s_first_price_apex)*apex_make+float(b_first_price_dydx)*dydx_take):
+                if (float(b_first_price_dydx)>float(s_first_price_apex)) and ((float(b_first_price_dydx)-float(s_first_price_apex) + coin_trades[-1][0])> (float(s_first_price_apex)*apex_make+float(b_first_price_dydx)*dydx_take)):
                     currentTime = time.time()
                     limitFeeRate = client_apex.account['takerFeeRate']
                     task_apex_buy = asyncio.create_task(
@@ -187,7 +187,7 @@ async def close_position(client_apex, client_dydx, position_id, market,size, sym
                     )
                     task_dydx_sell = asyncio.create_task(
                         send_order_dydx(client_dydx, position_id, market, ORDER_SIDE_SELL, ORDER_TYPE_LIMIT,
-                                       False, size, b_fourth_price_dydx, '0.0015', currentTime+1000)
+                                       False, size, b_fourth_price_dydx, '0.0015', currentTime+1000000)
                     )
                     orderResult1 = await task_apex_buy
                     orderResult2 = await task_dydx_sell
@@ -201,7 +201,7 @@ async def close_position(client_apex, client_dydx, position_id, market,size, sym
                     fp.close()
 
             elif(coin_trades[-1][1]==1):
-                if (float(b_first_price_apex)-float(s_first_price_dydx) + coin_trades[-1][0]) > (float(b_first_price_apex)*apex_make+float(s_first_price_dydx)*dydx_take):
+                if (float(b_first_price_apex)-float(s_first_price_dydx)) and ((float(b_first_price_apex)-float(s_first_price_dydx) + coin_trades[-1][0]) > (float(b_first_price_apex)*apex_make+float(s_first_price_dydx)*dydx_take)):
                     currentTime = time.time()
                     limitFeeRate = client_apex.account['takerFeeRate']
                     task_apex_sell = asyncio.create_task(
@@ -211,7 +211,7 @@ async def close_position(client_apex, client_dydx, position_id, market,size, sym
                     )
                     task_dydx_buy = asyncio.create_task(
                         send_order_dydx(client_dydx, position_id, market, ORDER_SIDE_BUY, ORDER_TYPE_LIMIT,
-                                        False, size, s_fourth_price_dydx, '0.0015', currentTime+1000)
+                                        False, size, s_fourth_price_dydx, '0.0015', currentTime+1000000)
                     )
                     orderResult1 = await task_apex_sell
                     orderResult2 = await task_dydx_buy

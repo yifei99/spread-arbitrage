@@ -18,7 +18,7 @@ async def main():
 
     # 发送一个市价买单
     currentTime = time.time()
-    orderResult = await send_order_dydx(client_dydx, position_id, MARKET_ATOM_USD, ORDER_SIDE_BUY, ORDER_TYPE_LIMIT, False, '1', s_fourth_price_dydx, '0.0015', currentTime+100)
+    orderResult = await send_order_dydx(client_dydx, position_id, MARKET_ATOM_USD, ORDER_SIDE_BUY, ORDER_TYPE_LIMIT, False, '1','1', '0.0015', currentTime+1000000)
     print('order_response',orderResult)
 
 asyncio.run(main())
