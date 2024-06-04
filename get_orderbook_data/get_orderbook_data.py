@@ -9,7 +9,7 @@ import csv
 import time
 import os
 
-# 交易对和市场列表
+# 定义交易对和市场列表
 symbols = ['BTCUSDC', 'ETHUSDC', 'LINKUSDC', 'AVAXUSDC', 'SOLUSDC', 'MATICUSDC', 'ATOMUSDC', 'DOGEUSDC', 'LTCUSDC', 'BCHUSDC']
 markets = [MARKET_BTC_USD, MARKET_ETH_USD, MARKET_LINK_USD, MARKET_AVAX_USD,
            MARKET_SOL_USD, MARKET_MATIC_USD, MARKET_ATOM_USD, MARKET_DOGE_USD,
@@ -89,3 +89,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+

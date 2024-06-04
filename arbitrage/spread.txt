@@ -1,6 +1,0 @@
-count: 0 symbol: MATIC-USDC as-db spread: 2.119691938105076
-count: 0 symbol: MATIC-USDC as-db spread: 2.2624434389139347
-count: 0 symbol: MATIC-USDC as-db spread: 2.120890774125056
-count: 0 symbol: MATIC-USDC as-db spread: 2.5622775800712083
-count: 0 symbol: MATIC-USDC as-db spread: 2.135687335374024
-count: 0 symbol: MATIC-USDC as-db spread: 2.135687335374024
