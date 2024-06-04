@@ -410,7 +410,7 @@ while True:
 
 运行结果如下：
 
-![get_currentdata_all_dydx](D:\学习资料\实习\量道投资\图片\get_currentdata_all_dydx.png)
+![get_currentdata_all_dydx](./photo/get_currentdata_all_dydx.png)
 
 dydx每次只能获取100笔交易，按照目前的频率，隔3分钟获取一次为佳。
 
