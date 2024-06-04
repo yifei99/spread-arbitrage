@@ -18,4 +18,3 @@ get_orderbook_data/depth-data/order_book_LTC-USD_dydx.csv
 get_orderbook_data/depth-data/order_book_ETHUSDC_apex.csv
 get_orderbook_data/depth-data/order_book_LTCUSDC_apex.csv
 get_orderbook_data/depth-data/order_book_SOLUSDC_apex.csv
-get_orderbook_data/depth-data/order_book_WLDUSDC_apex.csv
