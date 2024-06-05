@@ -44,8 +44,8 @@ async def fetch_and_save_orderbook(apex_client, dydx_client, symbol, market):
         dydx_bids = dydx_data['bids'][:ORDER_LIMIT]
 
         # 打印数据进行调试
-        print(f"Order book for {symbol} - Asks: {apex_asks}, Bids: {apex_bids}, Timestamp: {timestamp}")
-        print(f"Order book for {market} - Asks: {dydx_asks}, Bids: {dydx_bids}, Timestamp: {timestamp}")
+        print(f"Order book for {symbol} - Timestamp: {timestamp}")
+        print(f"Order book for {market} - Timestamp: {timestamp}")
 
         # 保存 Apex 数据到 CSV
         with open(apex_csv_path, mode='a', newline='') as apex_file:
@@ -71,9 +71,7 @@ async def fetch_and_save_orderbook(apex_client, dydx_client, symbol, market):
             for bid in dydx_bids:
                 dydx_writer.writerow([bid['size'], bid['price'], 'bid', timestamp])
 
-        print(f"Order book for {symbol} saved to {apex_csv_path}")
-        print(f"Order book for {market} saved to {dydx_csv_path}")
-
+     
         # 每次获取后等待10秒
         await asyncio.sleep(10)
 
