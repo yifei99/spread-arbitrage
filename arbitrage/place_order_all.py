@@ -38,7 +38,6 @@ account_response = client_dydx.private.get_account()
 position_id = account_response.data['account']['positionId']
 
 #初始化变量
-arbitrage_lock = asyncio.Lock()
 dydx_take = 0.0005
 apex_make = 0.0005
 level = 3
@@ -114,62 +113,60 @@ async def execute_trade(client_apex, client_dydx, position_id, market,size,symbo
     global apex_make
     global level
     print('arbitrage_count:',arbitrage_count)
-    async with arbitrage_lock:
-        if float(b_first_price_apex)-float(s_first_price_dydx) > float(b_first_price_apex)*apex_make*2+float(s_first_price_dydx)*dydx_take*2:
-            fp = open('spread.txt','a')
-            print('count:',arbitrage_count,'symbol:',symbol,'as-db spread:',(float(b_first_price_apex)-float(s_first_price_dydx))/(float(b_first_price_apex)*apex_make+float(s_first_price_dydx)*dydx_take),file=fp)
-            fp.close()
-            if arbitrage_count<level:
-                currentTime = time.time()
-                limitFeeRate = client_apex.account['takerFeeRate']
-                task_apex_sell = asyncio.create_task(
-                    send_order_apex(client_apex, symbol=symbol, side="SELL",
-                                    type="LIMIT", size=size, expirationEpochSeconds=currentTime+1000,
-                                    price=b_fourth_price_apex, limitFeeRate=limitFeeRate)
-                )
-                task_dydx_buy = asyncio.create_task(
-                    send_order_dydx(client_dydx, position_id, market, ORDER_SIDE_BUY, ORDER_TYPE_LIMIT,
-                                    False, size, s_fourth_price_dydx, '0.0015', currentTime+1000000)
-                )
-                orderResult1 = await task_apex_sell
-                orderResult2 = await task_dydx_buy
-                margin_value = float(b_first_price_apex)-float(s_first_price_dydx)-float(b_first_price_apex)*apex_make-float(s_first_price_dydx)*dydx_take
-                globals()[coin_count] += 1
-                arbitrage_count += 1
-                coin_trades.append([margin_value,0])
-                fp = open('trades.txt','a')
-                print('open position:',file=fp)
-                print('apex order:',orderResult1,file=fp)
-                print('dydx order:',orderResult2,file=fp)
-                fp.close
-    async with arbitrage_lock:
-        if float(b_first_price_dydx)-float(s_first_price_apex) > float(b_first_price_dydx)*dydx_take*2+float(s_first_price_apex)*apex_make*2:
-            fp = open('spread.txt','a')
-            print('count:',arbitrage_count,'symbol:',symbol,'ab-ds spread:',(float(b_first_price_apex)-float(s_first_price_dydx))/(float(b_first_price_apex)*apex_make+float(s_first_price_dydx)*dydx_take),file=fp)
-            fp.close()
-            if arbitrage_count >-level:
-                currentTime = time.time()
-                limitFeeRate = client_apex.account['takerFeeRate']
-                task_apex_buy = asyncio.create_task(
-                    send_order_apex(client_apex, symbol=symbol, side="BUY",
-                                    type="LIMIT", size=size, expirationEpochSeconds=currentTime+1000,
-                                    price=s_fourth_price_apex, limitFeeRate=limitFeeRate)
-                )
-                task_dydx_sell = asyncio.create_task(
-                    send_order_dydx(client_dydx, position_id, market, ORDER_SIDE_SELL, ORDER_TYPE_LIMIT,
-                                False, size, b_first_price_dydx, '0.0015', currentTime+1000000)
-                )
-                orderResult1 = await task_apex_buy
-                orderResult2 = await task_dydx_sell
-                margin_value = float(b_first_price_dydx)-float(s_first_price_apex)-float(b_first_price_dydx)*dydx_take-float(s_first_price_apex)*apex_make
-                globals()[coin_count] -= 1
-                arbitrage_count -= 1
-                coin_trades.append([margin_value,1])
-                fp = open('trades.txt','a')
-                print('open position:',file=fp)
-                print('apex order:',orderResult1,file=fp)
-                print('dydx order:',orderResult2,file=fp)
-                fp.close
+    if float(b_first_price_apex)-float(s_first_price_dydx) > float(b_first_price_apex)*apex_make*2+float(s_first_price_dydx)*dydx_take*2:
+        fp = open('spread.txt','a')
+        print('count:',arbitrage_count,'symbol:',symbol,'as-db spread:',(float(b_first_price_apex)-float(s_first_price_dydx))/(float(b_first_price_apex)*apex_make+float(s_first_price_dydx)*dydx_take),file=fp)
+        fp.close()
+        if arbitrage_count<level:
+            currentTime = time.time()
+            limitFeeRate = client_apex.account['takerFeeRate']
+            task_apex_sell = asyncio.create_task(
+                send_order_apex(client_apex, symbol=symbol, side="SELL",
+                                type="LIMIT", size=size, expirationEpochSeconds=currentTime+1000,
+                                price=b_fourth_price_apex, limitFeeRate=limitFeeRate)
+            )
+            task_dydx_buy = asyncio.create_task(
+                send_order_dydx(client_dydx, position_id, market, ORDER_SIDE_BUY, ORDER_TYPE_LIMIT,
+                                False, size, s_fourth_price_dydx, '0.0015', currentTime+1000000)
+            )
+            orderResult1 = await task_apex_sell
+            orderResult2 = await task_dydx_buy
+            margin_value = float(b_first_price_apex)-float(s_first_price_dydx)-float(b_first_price_apex)*apex_make-float(s_first_price_dydx)*dydx_take
+            globals()[coin_count] += 1
+            arbitrage_count += 1
+            coin_trades.append([margin_value,0])
+            fp = open('trades.txt','a')
+            print('open position:',file=fp)
+            print('apex order:',orderResult1,file=fp)
+            print('dydx order:',orderResult2,file=fp)
+            fp.close
+    if float(b_first_price_dydx)-float(s_first_price_apex) > float(b_first_price_dydx)*dydx_take*2+float(s_first_price_apex)*apex_make*2:
+        fp = open('spread.txt','a')
+        print('count:',arbitrage_count,'symbol:',symbol,'ab-ds spread:',(float(b_first_price_apex)-float(s_first_price_dydx))/(float(b_first_price_apex)*apex_make+float(s_first_price_dydx)*dydx_take),file=fp)
+        fp.close()
+        if arbitrage_count >-level:
+            currentTime = time.time()
+            limitFeeRate = client_apex.account['takerFeeRate']
+            task_apex_buy = asyncio.create_task(
+                send_order_apex(client_apex, symbol=symbol, side="BUY",
+                                type="LIMIT", size=size, expirationEpochSeconds=currentTime+1000,
+                                price=s_fourth_price_apex, limitFeeRate=limitFeeRate)
+            )
+            task_dydx_sell = asyncio.create_task(
+                send_order_dydx(client_dydx, position_id, market, ORDER_SIDE_SELL, ORDER_TYPE_LIMIT,
+                            False, size, b_first_price_dydx, '0.0015', currentTime+1000000)
+            )
+            orderResult1 = await task_apex_buy
+            orderResult2 = await task_dydx_sell
+            margin_value = float(b_first_price_dydx)-float(s_first_price_apex)-float(b_first_price_dydx)*dydx_take-float(s_first_price_apex)*apex_make
+            globals()[coin_count] -= 1
+            arbitrage_count -= 1
+            coin_trades.append([margin_value,1])
+            fp = open('trades.txt','a')
+            print('open position:',file=fp)
+            print('apex order:',orderResult1,file=fp)
+            print('dydx order:',orderResult2,file=fp)
+            fp.close
 
 async def close_position(client_apex, client_dydx, position_id, market,size, symbol,s_first_price_apex,b_first_price_apex,s_first_price_dydx,b_first_price_dydx,s_fourth_price_apex,b_fourth_price_apex,s_fourth_price_dydx,b_fourth_price_dydx,coin_count,coin_trades):
         global dydx_take
