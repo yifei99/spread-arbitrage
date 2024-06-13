@@ -1,0 +1,4 @@
+count: 0 symbol: LINK-USDC as-db spread: 2.025060118972284
+count: 1 symbol: MATIC-USDC as-db spread: 2.0368194281238994
+count: 2 symbol: LINK-USDC as-db spread: 2.094107941745691
+count: 3 symbol: ETH-USDC as-db spread: 2.039428959891179

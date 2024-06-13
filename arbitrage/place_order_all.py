@@ -198,7 +198,7 @@ async def close_position(client_apex, client_dydx, position_id, market,size, sym
                     fp.close()
 
             elif(coin_trades[-1][1]==1):
-                if (float(b_first_price_apex)-float(s_first_price_dydx)) and ((float(b_first_price_apex)-float(s_first_price_dydx) + coin_trades[-1][0]) > (float(b_first_price_apex)*apex_make+float(s_first_price_dydx)*dydx_take)):
+                if (float(b_first_price_apex)>float(s_first_price_dydx)) and ((float(b_first_price_apex)-float(s_first_price_dydx) + coin_trades[-1][0]) > (float(b_first_price_apex)*apex_make+float(s_first_price_dydx)*dydx_take)):
                     currentTime = time.time()
                     limitFeeRate = client_apex.account['takerFeeRate']
                     task_apex_sell = asyncio.create_task(
