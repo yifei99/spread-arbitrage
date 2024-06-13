@@ -1,12 +1,16 @@
 {
     "btc_trades": [],
-    "eth_trades": [],
-    "link_trades": [
+    "eth_trades": [
         [
-            0.01619800000000003,
+            3.893800000000091,
+            0
+        ],
+        [
+            3.796650000000182,
             0
         ]
     ],
+    "link_trades": [],
     "ltc_trades": [],
     "avax_trades": [],
     "atom_trades": [],

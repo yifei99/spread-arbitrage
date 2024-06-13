@@ -1,7 +1,7 @@
 {
     "btc_count": 0,
-    "eth_count": 0,
-    "link_count": 1,
+    "eth_count": 2,
+    "link_count": 0,
     "ltc_count": 0,
     "avax_count": 0,
     "atom_count": 0,
@@ -9,5 +9,5 @@
     "bch_count": 0,
     "matic_count": 1,
     "sol_count": 0,
-    "arbitrage_count": 2
+    "arbitrage_count": 3
 }
