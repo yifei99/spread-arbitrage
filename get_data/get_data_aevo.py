@@ -23,6 +23,17 @@ async def reconnect(aevo, ticker, data_folder):
     if attempt == 5:
         print(f"Failed to reconnect to {ticker} after 5 attempts.")
 
+async def send_heartbeat(aevo, interval=30):
+    """Send a heartbeat message to keep the connection alive."""
+    while True:
+        try:
+            await aevo.send_heartbeat()  # Assuming AevoClient has a method to send heartbeat
+            print("Sent heartbeat")
+        except Exception as e:
+            print(f"Error sending heartbeat: {e}")
+            break  # Break the loop to handle reconnection
+        await asyncio.sleep(interval)
+
 async def process_ticker(aevo, ticker, data_folder, initial_messages_to_skip=4):
     print(f"Subscribing to {ticker}")
     await aevo.subscribe_ticker(f"ticker:{ticker}:PERPETUAL")
@@ -46,6 +57,9 @@ async def process_ticker(aevo, ticker, data_folder, initial_messages_to_skip=4):
         if not file_exists:
             writer.writeheader()
             print(f"Created file and wrote header: {filename}")
+
+        # Start the heartbeat task
+        heartbeat_task = asyncio.create_task(send_heartbeat(aevo))
 
         while True:
             try:
@@ -102,6 +116,7 @@ async def process_ticker(aevo, ticker, data_folder, initial_messages_to_skip=4):
 
             except Exception as e:
                 print(f"Error during message processing for {ticker}: {e}")
+                heartbeat_task.cancel()  # Cancel the heartbeat task before reconnecting
                 await reconnect(aevo, ticker, data_folder)
                 break  # Break out of the current loop to handle reconnection
 
