@@ -1,52 +1,52 @@
 import asyncio
 import configparser
-from aevo import AevoClient
+from aevo import AevoClient  # 假设 aevo.py 中包含 AevoClient 类
 import csv
 import os
 import json
 import time
+import websockets
 
-async def reconnect(aevo, ticker, data_folder):
-    """Try to reconnect the WebSocket connection."""
-    attempt = 0
-    while attempt < 5:  # Try reconnecting 5 times
-        try:
-            print(f"Attempting to reconnect to {ticker}... (Attempt {attempt + 1})")
-            await aevo.open_connection()  # Open WebSocket connection
-            print(f"Reconnected to {ticker}.")
-            await process_ticker(aevo, ticker, data_folder)
-            break
-        except Exception as e:
-            print(f"Reconnection attempt {attempt + 1} failed for {ticker}: {e}")
-            attempt += 1
-            await asyncio.sleep(5)  # Wait before retrying
-    if attempt == 5:
-        print(f"Failed to reconnect to {ticker} after 5 attempts.")
+async def reconnect(ticker, data_folder, config, attempt=1, max_attempts=5):
+    """尝试重新连接 WebSocket 连接。"""
+    if attempt > max_attempts:
+        print(f"Failed to reconnect to {ticker} after {max_attempts} attempts.")
+        return None
+    
+    print(f"Attempting to reconnect to {ticker}... (Attempt {attempt})")
+    await asyncio.sleep(5 * attempt)  # 逐渐增加等待时间以避免频繁重连
 
-async def send_heartbeat(aevo, interval=30):
-    """Send a heartbeat message to keep the connection alive."""
-    while True:
-        try:
-            await aevo.send_heartbeat()  # Assuming AevoClient has a method to send heartbeat
-            print("Sent heartbeat")
-        except Exception as e:
-            print(f"Error sending heartbeat: {e}")
-            break  # Break the loop to handle reconnection
-        await asyncio.sleep(interval)
+    try:
+        # 重新初始化 AevoClient
+        aevo = AevoClient(
+            signing_key=config[ticker]['signing_key'],
+            wallet_address=config[ticker]['wallet_address'],
+            api_key=config[ticker]['api_key'],
+            api_secret=config[ticker]['api_secret'],
+            env=config[ticker]['env'],
+        )
+        await aevo.open_connection()  # 打开 WebSocket 连接
+        print(f"Reconnected to {ticker}.")
+        # 开始处理这个 ticker 的消息
+        asyncio.create_task(process_ticker(aevo, ticker, data_folder))
+        return aevo
+    except Exception as e:
+        print(f"Reconnection attempt {attempt} failed for {ticker}: {e}")
+        return await reconnect(ticker, data_folder, config, attempt + 1, max_attempts)
 
 async def process_ticker(aevo, ticker, data_folder, initial_messages_to_skip=4):
     print(f"Subscribing to {ticker}")
     await aevo.subscribe_ticker(f"ticker:{ticker}:PERPETUAL")
     
     received_messages = 0
-    last_timestamp = None  # Store the last processed timestamp
+    last_timestamp = None  # 存储最后处理的时间戳
 
-    # Ensure the data folder exists
+    # 确保数据文件夹存在
     if not os.path.exists(data_folder):
         os.makedirs(data_folder)
         print(f"Created folder: {data_folder}")
 
-    # Construct the file path for the CSV file
+    # 构建 CSV 文件的路径
     filename = os.path.join(data_folder, f"data_{ticker}_aevo.csv")
     file_exists = os.path.isfile(filename)
     
@@ -58,17 +58,12 @@ async def process_ticker(aevo, ticker, data_folder, initial_messages_to_skip=4):
             writer.writeheader()
             print(f"Created file and wrote header: {filename}")
 
-        # Start the heartbeat task
-        heartbeat_task = asyncio.create_task(send_heartbeat(aevo))
-
         while True:
             try:
                 async for msg in aevo.read_messages():
                     received_messages += 1
 
                     if received_messages >= initial_messages_to_skip:
-
-                        # Check if the message is a JSON string and convert it to a dictionary if necessary
                         if isinstance(msg, str):
                             try:
                                 msg = json.loads(msg)
@@ -76,15 +71,12 @@ async def process_ticker(aevo, ticker, data_folder, initial_messages_to_skip=4):
                                 print(f"Error decoding JSON message: {msg}. Error: {e}")
                                 continue
 
-                        # Verify the structure of the message
                         if 'data' in msg and 'tickers' in msg['data'] and len(msg['data']['tickers']) > 0:
                             data = msg['data']['tickers'][0]
-                            timestamp_ns = int(msg['data']['timestamp'])  # Nanoseconds timestamp
-                            timestamp_s = timestamp_ns // 1_000_000_000  # Convert to seconds
+                            timestamp_ns = int(msg['data']['timestamp'])  # 纳秒时间戳
+                            timestamp_s = timestamp_ns // 1_000_000_000  # 转换为秒
 
-                            # Check if this timestamp is new (i.e., different from the last one processed)
                             if timestamp_s != last_timestamp:
-                                # Prepare bid and ask data
                                 bid_data = {
                                     'price': data['bid']['price'],
                                     'size': data['bid']['amount'],
@@ -98,43 +90,47 @@ async def process_ticker(aevo, ticker, data_folder, initial_messages_to_skip=4):
                                     'timestamp': timestamp_s
                                 }
 
-                                # Write bid and ask data to CSV
                                 writer.writerow(bid_data)
                                 writer.writerow(ask_data)
                                 
-                                # Immediately flush the buffer to ensure data is written to disk
                                 file.flush()
                                 os.fsync(file.fileno())
 
-                                print(f"Written to CSV: {bid_data} and {ask_data}")
+                                # print(f"Written to CSV: {bid_data} and {ask_data}")
 
-                                # Update the last processed timestamp
                                 last_timestamp = timestamp_s
 
                         else:
                             print(f"Unexpected message structure: {msg}")
 
+            except websockets.exceptions.ConnectionClosedError as e:
+                print(f"WebSocket connection closed for {ticker}: {e}")
+                await aevo.close_connection()  # 确保连接关闭
+                aevo = await reconnect(ticker, data_folder, config)
+                if not aevo:
+                    print(f"Stopping processing for {ticker} due to repeated connection issues.")
+                    break
+
             except Exception as e:
                 print(f"Error during message processing for {ticker}: {e}")
-                heartbeat_task.cancel()  # Cancel the heartbeat task before reconnecting
-                await reconnect(aevo, ticker, data_folder)
-                break  # Break out of the current loop to handle reconnection
+                await aevo.close_connection()
+                aevo = await reconnect(ticker, data_folder, config)
+                if not aevo:
+                    print(f"Stopping processing for {ticker} due to repeated connection issues.")
+                    break
 
 async def main():
-    # Load configurations from aevo_config.ini
+    # 从 aevo_config.ini 加载配置
     config = configparser.ConfigParser()
     config.read('aevo_config.ini')
 
     tickers = ['SOL', 'DOGE', 'AVAX', 'MATIC', 'TRX', 'MKR', 'UMA', 'ATOM', 'CRV', 'BTC', 'NEAR', 'ETH', 'LINK', 
                'LTC', 'BCH', 'XRP', 'WLD', 'APT', 'ARB', 'TON', 'BLUR', 'BNB', 'DYDX', '1000PEPE', 'LDO', 'OP', 'TIA']
-    clients = []
     tasks = []
-
-    data_folder = 'depth-data'  # Define the folder for storing CSV files
+    data_folder = 'depth-data'  # 定义存储 CSV 文件的文件夹
 
     for ticker in tickers:
         try:
-            # Initialize AevoClient with specific configuration for the ticker
             aevo = AevoClient(
                 signing_key=config[ticker]['signing_key'],
                 wallet_address=config[ticker]['wallet_address'],
@@ -142,17 +138,16 @@ async def main():
                 api_secret=config[ticker]['api_secret'],
                 env=config[ticker]['env'],
             )
-            await aevo.open_connection()  # Open WebSocket connection
-            clients.append(aevo)
+            await aevo.open_connection()  # 打开 WebSocket 连接
 
-            # Create a task for processing messages from this ticker
+            # 创建一个处理该 ticker 消息的任务
             task = process_ticker(aevo, ticker, data_folder)
             tasks.append(task)
 
         except Exception as e:
             print(f"Error initializing connection for {ticker}: {e}")
 
-    # Run all tasks concurrently
+    # 并发运行所有任务
     await asyncio.gather(*tasks)
 
 if __name__ == "__main__":

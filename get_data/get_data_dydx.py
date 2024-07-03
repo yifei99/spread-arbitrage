@@ -38,8 +38,8 @@ async def fetch_and_save_orderbook_dydx(dydx_client, market):
         dydx_asks = dydx_data['asks'][:ORDER_LIMIT]
         dydx_bids = dydx_data['bids'][:ORDER_LIMIT]
 
-        # 打印数据进行调试
-        print(f"Order book for {market} - Timestamp: {timestamp}")
+        # # 打印数据进行调试
+        # print(f"Order book for {market} - Timestamp: {timestamp}")
 
         # 保存 dYdX 数据到 CSV
         with open(csv_path, mode='a', newline='') as csv_file:

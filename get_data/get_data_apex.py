@@ -33,8 +33,8 @@ async def fetch_and_save_orderbook_apex(apex_client, symbol):
         apex_asks = apex_data['a'][:ORDER_LIMIT]
         apex_bids = apex_data['b'][:ORDER_LIMIT]
 
-        # 打印数据进行调试
-        print(f"Order book for {symbol} - Timestamp: {timestamp}")
+        # # 打印数据进行调试
+        # print(f"Order book for {symbol} - Timestamp: {timestamp}")
 
         # 保存 Apex 数据到 CSV
         with open(csv_path, mode='a', newline='') as csv_file:
