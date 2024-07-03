@@ -161,7 +161,7 @@ class AevoClient:
             logger.error(e)
             logger.error(traceback.format_exc())
 
-    async def read_messages(self, read_timeout=0.1, backoff=0.1, on_disconnect=None):
+    async def read_messages(self, read_timeout=0.5, backoff=0.1, on_disconnect=None):
         while True:
             try:
                 message = await asyncio.wait_for(

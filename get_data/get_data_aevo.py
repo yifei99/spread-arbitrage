@@ -7,6 +7,9 @@ import json
 import time
 import websockets
 
+# 定义一个锁来控制读写操作
+connection_lock = asyncio.Lock()
+
 async def reconnect(ticker, data_folder, config, attempt=1, max_attempts=5):
     """尝试重新连接 WebSocket 连接。"""
     if attempt > max_attempts:
@@ -17,19 +20,21 @@ async def reconnect(ticker, data_folder, config, attempt=1, max_attempts=5):
     await asyncio.sleep(5 * attempt)  # 逐渐增加等待时间以避免频繁重连
 
     try:
-        # 重新初始化 AevoClient
-        aevo = AevoClient(
-            signing_key=config[ticker]['signing_key'],
-            wallet_address=config[ticker]['wallet_address'],
-            api_key=config[ticker]['api_key'],
-            api_secret=config[ticker]['api_secret'],
-            env=config[ticker]['env'],
-        )
-        await aevo.open_connection()  # 打开 WebSocket 连接
-        print(f"Reconnected to {ticker}.")
-        # 开始处理这个 ticker 的消息
-        asyncio.create_task(process_ticker(aevo, ticker, data_folder))
-        return aevo
+        # 获取锁，确保没有其他连接在进行读写操作
+        async with connection_lock:
+            # 重新初始化 AevoClient
+            aevo = AevoClient(
+                signing_key=config[ticker]['signing_key'],
+                wallet_address=config[ticker]['wallet_address'],
+                api_key=config[ticker]['api_key'],
+                api_secret=config[ticker]['api_secret'],
+                env=config[ticker]['env'],
+            )
+            await aevo.open_connection()  # 打开 WebSocket 连接
+            print(f"Reconnected to {ticker}.")
+            # 开始处理这个 ticker 的消息
+            asyncio.create_task(process_ticker(aevo, ticker, data_folder))
+            return aevo
     except Exception as e:
         print(f"Reconnection attempt {attempt} failed for {ticker}: {e}")
         return await reconnect(ticker, data_folder, config, attempt + 1, max_attempts)
