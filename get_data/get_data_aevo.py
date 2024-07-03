@@ -71,6 +71,13 @@ async def process_ticker(aevo, ticker, data_folder, initial_messages_to_skip=4):
                                 print(f"Error decoding JSON message: {msg}. Error: {e}")
                                 continue
 
+                        # 处理成功连接确认消息
+                        if 'data' in msg and 'success' in msg['data']:
+                            if msg['data']['success'] is True:
+                                print(f"Connection successful for account: {msg['data'].get('account')}")
+                                continue  # 跳过这类消息的进一步处理
+
+                        # 处理实际的数据消息
                         if 'data' in msg and 'tickers' in msg['data'] and len(msg['data']['tickers']) > 0:
                             data = msg['data']['tickers'][0]
                             timestamp_ns = int(msg['data']['timestamp'])  # 纳秒时间戳
@@ -96,16 +103,25 @@ async def process_ticker(aevo, ticker, data_folder, initial_messages_to_skip=4):
                                 file.flush()
                                 os.fsync(file.fileno())
 
-                                # print(f"Written to CSV: {bid_data} and {ask_data}")
+                                print(f"Written to CSV: {bid_data} and {ask_data}")
 
                                 last_timestamp = timestamp_s
 
                         else:
+                            # 在这里记录或处理意外的消息结构
                             print(f"Unexpected message structure: {msg}")
 
-            except websockets.exceptions.ConnectionClosedError as e:
+            except websockets.ConnectionClosedError as e:
                 print(f"WebSocket connection closed for {ticker}: {e}")
                 await aevo.close_connection()  # 确保连接关闭
+                aevo = await reconnect(ticker, data_folder, config)
+                if not aevo:
+                    print(f"Stopping processing for {ticker} due to repeated connection issues.")
+                    break
+
+            except asyncio.IncompleteReadError as e:
+                print(f"Incomplete read error during message processing for {ticker}: {e}")
+                await aevo.close_connection()
                 aevo = await reconnect(ticker, data_folder, config)
                 if not aevo:
                     print(f"Stopping processing for {ticker} due to repeated connection issues.")
@@ -118,6 +134,7 @@ async def process_ticker(aevo, ticker, data_folder, initial_messages_to_skip=4):
                 if not aevo:
                     print(f"Stopping processing for {ticker} due to repeated connection issues.")
                     break
+
 
 async def main():
     # 从 aevo_config.ini 加载配置
